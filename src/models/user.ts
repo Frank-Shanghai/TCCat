@@ -1,6 +1,7 @@
 import { Effect, Reducer } from 'umi';
 
 import { queryCurrent, query as queryUsers } from '@/services/user';
+import { setAuthority } from '@/utils/authority';
 
 export interface CurrentUser {
   avatar?: string;
@@ -50,9 +51,39 @@ const UserModel: UserModelType = {
     },
     *fetchCurrent(_, { call, put }) {
       const response = yield call(queryCurrent);
+      /* Server side user DTO structure
+      public class UserDetails
+      {
+          public string Id { get; set; }
+          public string Email { get; set; }
+          public string PhoneNumber { get; set; }
+          public IList<string> Roles { get; set; }
+          public string UserName { get; set; }
+          public string FirstName { get; set; }
+          public string LastName { get; set; }
+          public int Level { get; set; }
+          public DateTime JoinDate { get; set; }
+      }
+      */
+
+      if(response.Roles.indexOf("SuperAdmin") > -1 || response.Roles.indexOf("Admin") > -1){
+        setAuthority("admin");
+      }
+      else{
+        setAuthority("user");
+      }
+
+      let currentUser = {          
+        // Can reference to the mock up data for a user data structure
+        avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
+        name: response.FirstName + ' ' + response.LastName,
+        title: response.UserName,
+        userid: response.Id
+      };
+
       yield put({
         type: 'saveCurrentUser',
-        payload: response,
+        payload: currentUser,
       });
     },
   },

@@ -1,9 +1,9 @@
 import { stringify } from 'querystring';
 import { history, Reducer, Effect } from 'umi';
 
-import { fakeAccountLogin } from '@/services/login';
-import { setAuthority } from '@/utils/authority';
+import { accountLogin } from '@/services/login';
 import { getPageQuery } from '@/utils/utils';
+import request from 'umi-request';
 
 export interface StateType {
   status?: 'ok' | 'error';
@@ -32,13 +32,25 @@ const Model: LoginModelType = {
 
   effects: {
     *login({ payload }, { call, put }) {
-      const response = yield call(fakeAccountLogin, payload);
+      //const response = yield call(fakeAccountLogin, payload);
+      const tokenResponse = yield call(accountLogin, payload);
+
+      if(tokenResponse && tokenResponse.ok === false) return;
+
+      request.interceptors.request.use((url, options) => {
+        return {
+          url: url,
+          options: {...options, headers: {'authorization': tokenResponse.token_type + " " + tokenResponse.access_token} }
+        };
+      });
+
       yield put({
         type: 'changeLoginStatus',
-        payload: response,
+        payload: tokenResponse,
       });
+      
       // Login successfully
-      if (response.status === 'ok') {
+      if (tokenResponse && tokenResponse.ok !== false) {
         const urlParams = new URL(window.location.href);
         const params = getPageQuery();
         let { redirect } = params as { redirect: string };
@@ -74,12 +86,20 @@ const Model: LoginModelType = {
 
   reducers: {
     changeLoginStatus(state, { payload }) {
-      setAuthority(payload.currentAuthority);
-      return {
-        ...state,
-        status: payload.status,
-        type: payload.type,
-      };
+      if(payload && payload.ok === false){
+        return {
+          ...state,
+          status: "error",
+          type: undefined,
+        };
+      }
+      else {
+        return {
+          ...state,
+          status: "ok",
+          type: payload.type,
+        };
+      }
     },
   },
 };
