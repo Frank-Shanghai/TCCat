@@ -79,6 +79,11 @@ export default defineConfig({
               component: './ListTableList',
             },
             {
+              name: '新页面',
+              path: '/newPage',
+              component: './NewPage'
+            },
+            {
               component: './404',
             },
           ],
